@@ -39,6 +39,23 @@ app.post('/api/set-step-key', express.json({ limit: '1mb' }), async (req, res) =
     }
 });
 
+app.post('/api/set-letterhead-key', express.json({ limit: '1mb' }), async (req, res) => {
+
+    try {
+        if (!req.body.letterhead_key || (req.body.letterhead_key as string)?.length > KEY_LIMIT || typeof (req.body.letterhead_key) !== 'string')
+            return res.status(400).send(`letterhead_key is null or letterhead_key length greater than ${KEY_LIMIT}`);
+        if (!req.body.key_value || typeof (req.body.key_value) !== 'number')
+            return res.status(400).send('key_value is null or key_value type is not number');
+
+        const result = await redis.set(`bcc_letterheads:${req.body.letterhead_key}`, req.body.key_value ?? 1);
+
+        return res.status(200).send(`Succes result: ${result}`);
+    }
+    catch (err) {
+        return res.status(500).send(`Error set-step-key: ${err}`);
+    }
+});
+
 app.delete('/api/delete-key', express.json({ limit: '1mb' }), async (req, res) => {
 
     try {
@@ -59,12 +76,12 @@ app.get('/api/get-letterhead-number/', express.json({ 'limit': '1mb' }), async (
     try {
 
         if (!(req.query.key as string) || (req.query.key as string).length == 0 || (req.query.key as string).length > KEY_LIMIT)
-            return res.status(400).send('body is not exist key value');
+            return res.status(400).send(`body is not exist key value or key length greater than ${KEY_LIMIT}`);
         if (!req.query.step_key || (req.query.step_key as string).length == 0 || (req.query.step_key as string).length > STEP_KEY_LIMIT || typeof (req.query.step_key) !== 'string')
-            return res.status(400).send('body is not exist step_key value');
+            return res.status(400).send(`body is not exist step_key value or key length greater than ${STEP_KEY_LIMIT}`);
 
         const increment_key = await redis.get(`bcc_letterheads:counters:${req.query.step_key}`)
-        const result = await redis.incrby(`bcc-letterheads:${req.query.key}`, increment_key ?? 1);
+        const result = await redis.incrby(`bcc_letterheads:${req.query.key}`, increment_key ?? 1);
 
         return res.status(200).send(result?.toString() ?? '');
     }
